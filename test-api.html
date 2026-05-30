@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Tester</title>
+    <style>
+        body { font-family: Arial; padding: 20px; max-width: 800px; margin: auto; }
+        .section { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        button { background: #007bff; color: white; border: none; padding: 8px 15px; cursor: pointer; margin: 5px; }
+        pre { background: #f4f4f4; padding: 10px; overflow-x: auto; }
+        input, select, textarea { width: 100%; padding: 8px; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>TaskFlow API Tester</h1>
+    
+    <div class="section">
+        <h3>1. Authentication</h3>
+        <input type="text" id="baseUrl" placeholder="API URL" value="http://localhost:5000/api">
+        <button onclick="signup()">Signup</button>
+        <button onclick="login()">Login</button>
+        <div>
+            <strong>Token:</strong>
+            <input type="text" id="token" placeholder="Token will appear here" readonly style="background:#f0f0f0">
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>2. Projects</h3>
+        <input type="text" id="projectId" placeholder="Project ID">
+        <button onclick="getProjects()">Get All Projects</button>
+        <button onclick="createProject()">Create Project</button>
+        <button onclick="getProjectById()">Get Project by ID</button>
+        <button onclick="updateProject()">Update Project</button>
+        <button onclick="addMember()">Add Member</button>
+    </div>
+
+    <div class="section">
+        <h3>3. Tasks</h3>
+        <input type="text" id="taskId" placeholder="Task ID">
+        <button onclick="getDashboard()">Get Dashboard</button>
+        <button onclick="createTask()">Create Task</button>
+        <button onclick="getProjectTasks()">Get Project Tasks</button>
+        <button onclick="updateTaskStatus()">Update Status</button>
+        <button onclick="updateTask()">Update Task</button>
+        <button onclick="deleteTask()">Delete Task</button>
+    </div>
+
+    <div class="section">
+        <h3>Response:</h3>
+        <pre id="response">Response will appear here...</pre>
+    </div>
+
+    <script>
+        const getToken = () => document.getElementById('token').value;
+        const setToken = (token) => document.getElementById('token').value = token;
+        const getBaseUrl = () => document.getElementById('baseUrl').value;
+
+        async function request(method, endpoint, body = null) {
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            };
+            
+            const token = getToken();
+            if (token) {
+                options.headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+            
+            try {
+                const response = await fetch(`${getBaseUrl()}${endpoint}`, options);
+                const data = await response.json();
+                document.getElementById('response').innerText = JSON.stringify(data, null, 2);
+                return data;
+            } catch (error) {
+                document.getElementById('response').innerText = `Error: ${error.message}`;
+            }
+        }
+
+        async function signup() {
+            const data = await request('POST', '/auth/signup', {
+                name: 'Test User',
+                email: `test${Date.now()}@example.com`,
+                password: '123456',
+                role: 'admin'
+            });
+            if (data.token) setToken(data.token);
+        }
+
+        async function login() {
+            const email = prompt('Enter email:');
+            const data = await request('POST', '/auth/login', {
+                email: email || 'test@example.com',
+                password: '123456'
+            });
+            if (data.token) setToken(data.token);
+        }
+
+        async function getProjects() {
+            await request('GET', '/projects');
+        }
+
+        async function createProject() {
+            const name = prompt('Project name:', 'New Project');
+            const data = await request('POST', '/projects', {
+                name: name,
+                description: 'Test project description',
+                members: []
+            });
+            if (data._id) document.getElementById('projectId').value = data._id;
+        }
+
+        async function getProjectById() {
+            const id = document.getElementById('projectId').value;
+            if (!id) return alert('Enter Project ID first');
+            await request('GET', `/projects/${id}`);
+        }
+
+        async function updateProject() {
+            const id = document.getElementById('projectId').value;
+            if (!id) return alert('Enter Project ID first');
+            await request('PUT', `/projects/${id}`, {
+                name: 'Updated Project Name',
+                status: 'active'
+            });
+        }
+
+        async function addMember() {
+            const id = document.getElementById('projectId').value;
+            const email = prompt('Enter member email:');
+            if (!id || !email) return alert('Project ID and email required');
+            await request('POST', `/projects/${id}/members`, { email });
+        }
+
+        async function getDashboard() {
+            await request('GET', '/tasks/dashboard');
+        }
+
+        async function createTask() {
+            const projectId = document.getElementById('projectId').value;
+            if (!projectId) return alert('Create or enter Project ID first');
+            
+            const data = await request('POST', '/tasks', {
+                title: 'Test Task',
+                description: 'Task description',
+                projectId: projectId,
+                assignedTo: 'USER_ID', // Replace with actual user ID
+                priority: 'medium',
+                dueDate: '2026-06-30'
+            });
+            if (data._id) document.getElementById('taskId').value = data._id;
+        }
+
+        async function getProjectTasks() {
+            const projectId = document.getElementById('projectId').value;
+            if (!projectId) return alert('Enter Project ID');
+            await request('GET', `/tasks/project/${projectId}`);
+        }
+
+        async function updateTaskStatus() {
+            const taskId = document.getElementById('taskId').value;
+            const status = prompt('Status (pending/in-progress/completed):', 'in-progress');
+            if (!taskId) return alert('Enter Task ID');
+            await request('PATCH', `/tasks/${taskId}/status`, { status });
+        }
+
+        async function updateTask() {
+            const taskId = document.getElementById('taskId').value;
+            if (!taskId) return alert('Enter Task ID');
+            await request('PUT', `/tasks/${taskId}`, {
+                title: 'Updated Task',
+                priority: 'urgent'
+            });
+        }
+
+        async function deleteTask() {
+            const taskId = document.getElementById('taskId').value;
+            if (!taskId) return alert('Enter Task ID');
+            if (confirm('Delete this task?')) {
+                await request('DELETE', `/tasks/${taskId}`);
+            }
+        }
+    </script>
+    <!-- Add this improved signup function to your test-api.html -->
+<script>
+// Replace your existing signup function with this:
+async function signup() {
+    const name = prompt('Enter name:', 'Test User');
+    const email = prompt('Enter email:', `test${Date.now()}@example.com`);
+    const password = prompt('Enter password:', '123456');
+    const role = confirm('Make admin?') ? 'admin' : 'member';
+    
+    const data = await request('POST', '/auth/signup', {
+        name: name,
+        email: email,
+        password: password,
+        role: role
+    });
+    
+    if (data.token) {
+        setToken(data.token);
+        showMessage('✅ Signup successful! Token saved.');
+        console.log('User created:', data.user);
+    } else if (data.error) {
+        showMessage('❌ Signup failed: ' + data.error);
+    }
+}
+
+function showMessage(msg) {
+    const responseDiv = document.getElementById('response');
+    responseDiv.innerText = msg + '\n\n' + responseDiv.innerText;
+}
+</script>
+</body>
+<button onclick="getMyUserId()">Get My User ID</button>
+
+<script>
+async function getMyUserId() {
+    const data = await request('GET', '/projects');
+    if (data && data.length > 0 && data[0].owner) {
+        const userId = data[0].owner._id;
+        document.getElementById('userId').value = userId;
+        showMessage(`✅ Your User ID: ${userId}`);
+        // Also try to get from dashboard
+        const dashboard = await request('GET', '/tasks/dashboard');
+        if (dashboard.tasks && dashboard.tasks[0]) {
+            const assignedToId = dashboard.tasks[0].assignedTo?._id;
+            if (assignedToId) {
+                document.getElementById('userId').value = assignedToId;
+            }
+        }
+    } else {
+        showMessage('⚠️ Create a project first to get your User ID');
+    }
+}
+</script>
+</html>
