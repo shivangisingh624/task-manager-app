@@ -23,4 +23,6 @@ npm-debug.log*
 
 # OS files
 Thumbs.db
-desktop.ini
+desktop.ini.env
+package-lock.json
+node_modules/
