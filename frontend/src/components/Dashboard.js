@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import Navbar from './Navbar';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.REACT_APP_API_URL || 'https://task-manager-app-ak9k.onrender.com';
 
 const Dashboard = () => {
   const { user } = useAuth();
